@@ -4,10 +4,11 @@ The default **stdio** transport is zero-config and right for a single user on on
 client spawns the binary, no ports, no certs. For a **durable Claude Desktop connection at team
 scale**, use the **Streamable-HTTP + OAuth** path documented here.
 
-> **Status:** the server's `--transport http` path is the remaining Phase-5 implementation (it wires
-> `rmcp`'s `transport-streamable-http-server` + `auth` features). Today it exits with a clear
-> "not yet implemented" message; stdio is the working transport. This guide is the deployment design
-> to build against — the infrastructure (TLS, IdP, proxy) below is real and reusable as-is.
+> **Status:** the server's `--transport http` path is **implemented and working** — it serves MCP over
+> TLS via `rmcp`'s `transport-streamable-http-server`, gates `/mcp` (plus the bridge's `/project` and
+> `/context` endpoints) behind a bearer token, and advertises RFC 9728 protected-resource metadata. The
+> bearer token is the OAuth resource-server half; wiring a full IdP (below) so Claude obtains tokens
+> interactively is the remaining production step. The infrastructure (TLS, IdP, proxy) below is real.
 
 ## Why HTTPS is required
 

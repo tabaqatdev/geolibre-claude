@@ -179,6 +179,11 @@ async fn main() -> Result<()> {
         "http" => {
             let project_path = project_path(&cfg);
             eprintln!("  project: {}", project_path.display());
+            // The bridge's `PUT /context` target — same directory as the project doc.
+            let context_path = project_path
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new("."))
+                .join("map-context.json");
             let base = (!cfg.catalog_url.is_empty()).then_some(cfg.catalog_url.as_str());
             let parquet = geoparquet::GeoParquetConfig {
                 local_root: env::var("GEOLIBRE_PARQUET_ROOT")
@@ -187,7 +192,7 @@ async fn main() -> Result<()> {
                     .map(PathBuf::from),
                 url_prefix: env::var("GEOLIBRE_PARQUET_URL_PREFIX").ok().filter(|s| !s.is_empty()),
             };
-            let server = GeolibreServer::new(Catalog::new(base), parquet, project_path);
+            let server = GeolibreServer::new(Catalog::new(base), parquet, project_path.clone());
             let http_cfg = http::HttpConfig {
                 host: cfg.http_host.clone(),
                 port: cfg.http_port,
@@ -199,6 +204,8 @@ async fn main() -> Result<()> {
                 ),
                 auth_token: env::var("GEOLIBRE_CLAUDE_AUTH_TOKEN").ok().filter(|t| !t.is_empty()),
                 issuer: env::var("GEOLIBRE_CLAUDE_OAUTH_ISSUER").ok().filter(|s| !s.is_empty()),
+                project_path,
+                context_path,
             };
             http::serve(server, http_cfg).await
         }

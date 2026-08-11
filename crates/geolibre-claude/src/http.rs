@@ -7,17 +7,17 @@
 //! metadata points Claude at your IdP, which mints the tokens.
 
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use axum::{
-    body::Body,
+    body::{Body, Bytes},
     extract::State,
     http::{header, HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Json, Response},
-    routing::get,
+    routing::{get, put},
     Router,
 };
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
@@ -34,6 +34,10 @@ pub struct HttpConfig {
     pub key: PathBuf,
     pub auth_token: Option<String>,
     pub issuer: Option<String>,
+    /// The project document the GeoLibre bridge reads via `GET /project`.
+    pub project_path: PathBuf,
+    /// Where the bridge writes the live map context via `PUT /context`.
+    pub context_path: PathBuf,
 }
 
 #[derive(Clone)]
@@ -66,6 +70,14 @@ pub async fn serve(server: GeolibreServer, cfg: HttpConfig) -> Result<()> {
 
     let prm = protected_resource_metadata(&base, cfg.issuer.as_deref());
 
+    // Bridge file-exchange endpoints. GeoLibre's webview CSP forbids `file:` in
+    // connect-src (and `fetch` can't read/write `file://` anyway), but it allows
+    // `https:` and `http://localhost:*` — so the plugin reaches these over the same
+    // HTTPS listener instead of touching the filesystem directly. Both sit behind
+    // the bearer gate below.
+    let project_path = cfg.project_path.clone();
+    let context_path = cfg.context_path.clone();
+
     let mut app = Router::new()
         .route("/health", get(|| async { "ok" }))
         .route(
@@ -73,6 +85,20 @@ pub async fn serve(server: GeolibreServer, cfg: HttpConfig) -> Result<()> {
             get(move || {
                 let prm = prm.clone();
                 async move { Json(prm) }
+            }),
+        )
+        .route(
+            "/project",
+            get(move || {
+                let p = project_path.clone();
+                async move { serve_project(&p).await }
+            }),
+        )
+        .route(
+            "/context",
+            put(move |body: Bytes| {
+                let p = context_path.clone();
+                async move { write_context(&p, body).await }
             }),
         )
         .nest_service("/mcp", mcp);
@@ -144,6 +170,34 @@ async fn require_bearer(State(auth): State<AuthState>, req: Request<Body>, next:
         res.headers_mut().insert(header::WWW_AUTHENTICATE, v);
     }
     res
+}
+
+/// `GET /project` — serve the project document (`claude.geolibre.json`) the
+/// app-bridge tools maintain, so the plugin can apply Claude's map. 404 before the
+/// first tool creates it; the bridge treats that as "nothing to apply yet".
+async fn serve_project(path: &Path) -> Response {
+    match tokio::fs::read(path).await {
+        Ok(bytes) => {
+            ([(header::CONTENT_TYPE, "application/json")], bytes).into_response()
+        }
+        Err(_) => (StatusCode::NOT_FOUND, "no project document yet\n").into_response(),
+    }
+}
+
+/// `PUT /context` — the plugin reports the live map (`map-context.json`) so
+/// describe_layer / query_data see the on-map layers and resolve tokens. The body
+/// must be JSON; anything else is rejected before it can corrupt the file the
+/// server later reads. Body size is bounded by axum's default request limit.
+async fn write_context(path: &Path, body: Bytes) -> Response {
+    if serde_json::from_slice::<serde_json::Value>(&body).is_err() {
+        return (StatusCode::BAD_REQUEST, "body must be JSON\n").into_response();
+    }
+    match tokio::fs::write(path, &body).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(e) => {
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("write failed: {e}\n")).into_response()
+        }
+    }
 }
 
 /// Length-aware, difference-accumulating comparison so a wrong token doesn't leak

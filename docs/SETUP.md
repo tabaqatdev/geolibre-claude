@@ -240,17 +240,23 @@ mkdir -p ~/.geolibre/plugins
 ln -sfn "$(pwd)/plugins/geolibre-claude-bridge" ~/.geolibre/plugins/geolibre-claude-bridge
 
 # launch GeoLibre with the runtime env it needs, from a terminal
-export GEOLIBRE_CLAUDE_PROJECT_URL="file://$HOME/Apps/geolibre-claude/claude.geolibre.json"   # server → plugin (apply)
-export GEOLIBRE_CLAUDE_CONTEXT_URL="file://$HOME/Apps/geolibre-claude/map-context.json"       # plugin → server (map context)
+export GEOLIBRE_CLAUDE_PROJECT_URL="https://localhost:8443/project"   # server → plugin (apply)
+export GEOLIBRE_CLAUDE_CONTEXT_URL="https://localhost:8443/context"   # plugin → server (map context)
+export GEOLIBRE_CLAUDE_AUTH_TOKEN="$(cat ~/.config/geolibre-claude/token)"  # same bearer token as Step 3
 open -a "GeoLibre Desktop"
 ```
 
-The plugin **reads** the project document (`PROJECT_URL`) to apply Claude's changes, and **writes** the
-map context (`CONTEXT_URL`) — the layers on the map with their sources (an ArcGIS Feature Service URL +
-token, or a GeoParquet path) — so `describe_layer` / `query_data` know what's on the map. The token for
-a secured ArcGIS service travels in that context and is resolved by the server; it's redacted from
-`get_map_state`, never exposed to the model. (Both file paths are the live-integration point to verify
-under GeoLibre's CSP — see the contract in the `geolibre-project-file` skill.)
+The plugin **reads** the project document with `GET /project` (`PROJECT_URL`) to apply Claude's changes,
+and **writes** the map context with `PUT /context` (`CONTEXT_URL`) — the layers on the map with their
+sources (an ArcGIS Feature Service URL + token, or a GeoParquet path) — so `describe_layer` / `query_data`
+know what's on the map. Both endpoints live on the server's HTTPS listener and require the bearer token.
+The token for a secured ArcGIS service travels in the context and is resolved by the server; it's redacted
+from `get_map_state`, never exposed to the model.
+
+> **Why HTTPS endpoints, not `file://`?** GeoLibre's webview enforces a Content-Security-Policy whose
+> `connect-src` allows `https:` and `http://localhost:*` but **not** `file:` — and `fetch()` cannot read or
+> write `file://` in any case. Serving the exchange over the same localhost HTTPS listener is what the CSP
+> permits (verified against GeoLibre Desktop 2.5.0). See the contract in the `geolibre-project-file` skill.
 
 In GeoLibre: open the **Claude** toolbar menu → **Bridge panel**; it should say *“Bridge active”*.
 Prove the apply path by seeding a map and watching it load:
@@ -259,9 +265,12 @@ cp examples/claude.geolibre.json ./claude.geolibre.json
 ```
 Then drive it from Claude with `/geolibre-claude:map`.
 
-> This is the one step not yet verified end-to-end here (it needs the running app + its CSP). If the
-> layer doesn't appear, open GeoLibre's dev console for a CSP/fetch error; seeding the file directly
-> isolates it. See [REVIEW.md](REVIEW.md).
+> The transport is verified: the server's `GET /project` / `PUT /context` endpoints and the bearer gate
+> are tested, and GeoLibre 2.5.0's CSP is confirmed to allow the localhost HTTPS origin. What remains
+> app-specific is the plugin runtime itself — whether GeoLibre injects `__GEOLIBRE_RUNTIME_ENV__` and
+> calls `activate(app)` with the `GeoLibreAppAPI` this bridge expects. If the layer doesn't appear, open
+> GeoLibre's dev console: a `fetch`/CSP error points at the endpoints, a missing-API error at the plugin
+> surface. Seeding `claude.geolibre.json` directly isolates the two. See [REVIEW.md](REVIEW.md).
 
 ---
 

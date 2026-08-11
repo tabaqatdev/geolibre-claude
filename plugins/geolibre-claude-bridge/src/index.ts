@@ -7,10 +7,11 @@
  * Two halves:
  *  - applyProject(): turns a project document into GeoLibreAppAPI calls. Real and
  *    reviewable; the ArcGIS catalog fetch is a normal HTTPS GET.
- *  - loadLoop(): reads the project document on an interval. This is the part that
- *    depends on GeoLibre's runtime/CSP and MUST be verified in a running app — the
- *    URL/path comes from the allowlisted runtime env; without it the bridge stays
- *    idle rather than guessing.
+ *  - loadLoop(): reads the project document on an interval from the server's
+ *    `GET /project` endpoint (and reports the map back via `PUT /context`). Both are
+ *    http(s)/localhost URLs, which GeoLibre's webview CSP permits (connect-src
+ *    `https:` / `http://localhost:*`; `file:` is blocked). The URL comes from the
+ *    allowlisted runtime env; without it the bridge stays idle rather than guessing.
  */
 
 interface GeoLibreAppAPI {
@@ -65,9 +66,19 @@ interface Project {
   layers?: ProjectLayer[];
 }
 
-const PROJECT_URL_KEY = "GEOLIBRE_CLAUDE_PROJECT_URL"; // where to read claude.geolibre.json (server → plugin)
-const CONTEXT_URL_KEY = "GEOLIBRE_CLAUDE_CONTEXT_URL"; // where to write map-context.json (plugin → server)
+// The server exposes these over its HTTPS listener as GET /project and PUT /context.
+// GeoLibre's webview CSP allows `https:` and `http://localhost:*` in connect-src (but
+// NOT `file:`), so these MUST be http(s) URLs — e.g. https://localhost:8443/project.
+const PROJECT_URL_KEY = "GEOLIBRE_CLAUDE_PROJECT_URL"; // GET claude.geolibre.json (server → plugin)
+const CONTEXT_URL_KEY = "GEOLIBRE_CLAUDE_CONTEXT_URL"; // PUT map-context.json (plugin → server)
+const AUTH_TOKEN_KEY = "GEOLIBRE_CLAUDE_AUTH_TOKEN"; // bearer token the endpoints require (if set)
 const POLL_MS = 2000;
+
+/** Authorization header for the server endpoints, when a bearer token is configured. */
+function authHeaders(): Record<string, string> {
+  const token = runtimeEnv()[AUTH_TOKEN_KEY];
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 const applied = new Map<string, string>(); // project layer id → map layer id
 let timer: ReturnType<typeof setInterval> | undefined;
@@ -157,8 +168,9 @@ function toContextSource(src: ProjectLayer["source"]): Record<string, unknown> {
   return { type: "geojson" };
 }
 
-/** Write map-context.json (plugin → server). The write target is the integration
- *  point to verify in a running GeoLibre (a local endpoint or the app's fs bridge). */
+/** Report the live map to the server (plugin → server) via `PUT /context`. The
+ *  target is an https/localhost URL the webview CSP permits (connect-src `https:` /
+ *  `http://localhost:*`); `file://` is blocked by CSP and unsupported by fetch. */
 async function sendMapContext(project: Project): Promise<void> {
   const target = runtimeEnv()[CONTEXT_URL_KEY];
   if (!target) return; // no write target configured — stay idle rather than guess
@@ -166,7 +178,7 @@ async function sendMapContext(project: Project): Promise<void> {
   try {
     await fetch(target, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ layers, view: project.view }),
     });
   } catch (e) {
@@ -178,8 +190,8 @@ async function loadOnce(app: GeoLibreAppAPI): Promise<void> {
   const url = runtimeEnv()[PROJECT_URL_KEY];
   if (!url) return; // no source configured — stay idle rather than guess (see file header)
   try {
-    const res = await fetch(url);
-    if (!res.ok) return;
+    const res = await fetch(url, { headers: authHeaders() });
+    if (!res.ok) return; // 404 = no project document yet; nothing to apply
     const text = await res.text();
     if (text === lastSerialized) return; // unchanged
     lastSerialized = text;
