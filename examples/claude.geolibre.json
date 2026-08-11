@@ -8,24 +8,20 @@
       "id": "big-cities",
       "name": "Cities over 5M",
       "source": {
-        "type": "catalog",
-        "service": "SampleWorldCities/MapServer",
-        "layer": 0,
+        "type": "arcgis",
+        "layer": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/SampleWorldCities/MapServer/0",
         "where": "POP > 5000000"
       },
       "style": {
         "type": "graduated",
         "field": "POP",
-        "method": "quantile",
-        "ramp": "sequential",
-        "classes": [
-          { "min": 5000000, "max": 7000000, "color": "#fee5d9", "label": "5–7M" },
-          { "min": 7000000, "max": 9000000, "color": "#fcae91", "label": "7–9M" },
-          { "min": 9000000, "max": 12000000, "color": "#fb6a4a", "label": "9–12M" },
-          { "min": 12000000, "max": null, "color": "#cb181d", "label": "12M+" }
-        ],
         "opacity": 0.85,
-        "stroke": { "color": "#00000033", "width": 0.5 }
+        "classes": [
+          { "min": 5000000, "max": 7000000, "color": "#fee5d9" },
+          { "min": 7000000, "max": 9000000, "color": "#fcae91" },
+          { "min": 9000000, "max": 12000000, "color": "#fb6a4a" },
+          { "min": 12000000, "max": null, "color": "#cb181d" }
+        ]
       },
       "visible": true
     }

@@ -91,7 +91,7 @@ if [ "$TRANSPORT" = "http" ]; then
     ok "Server running (pid $(cat "$RUN_DIR/mcp.pid")). Logs: .run/mcp.log"
   else
     rm -f "$RUN_DIR/mcp.pid"
-    warn "Server exited immediately. HTTPS+OAuth transport lands in Phase 5 — see .run/mcp.log:"
+    warn "Server exited immediately — check TLS certs and the bearer token. See .run/mcp.log:"
     tail -n 5 "$RUN_DIR/mcp.log" >&2 || true
   fi
 else
