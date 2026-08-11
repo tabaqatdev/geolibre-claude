@@ -28,7 +28,11 @@ pub struct GeoParquetConfig {
 
 /// Is this layer reference a GeoParquet source (vs an ArcGIS URL)?
 pub fn is_geoparquet_ref(layer_ref: &str) -> bool {
-    layer_ref.trim().to_ascii_lowercase().ends_with(".parquet")
+    let r = layer_ref.trim().to_ascii_lowercase();
+    // The GeoParquet spec recommends `.parquet` (for Parquet-tool interop) over
+    // `.geoparquet`, but `.geoparquet` is common in practice (GeoLibre, leafmap, …),
+    // so accept both. https://github.com/opengeospatial/geoparquet
+    r.ends_with(".parquet") || r.ends_with(".geoparquet")
 }
 
 impl GeoParquetConfig {
@@ -395,6 +399,15 @@ pub fn query(read_target: &str, p: &QueryDataArgs<'_>) -> Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn geoparquet_ref_matches_both_extensions() {
+        assert!(is_geoparquet_ref("data/schools.geoparquet"));
+        assert!(is_geoparquet_ref("s3://bucket/x.parquet"));
+        assert!(is_geoparquet_ref("X.GeoParquet")); // case-insensitive
+        assert!(!is_geoparquet_ref("https://host/FeatureServer/0"));
+        assert!(!is_geoparquet_ref("roads.geojson"));
+    }
 
     #[test]
     fn esri_to_wkt_covers_all_geometry_types() {
