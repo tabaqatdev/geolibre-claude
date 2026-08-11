@@ -25,7 +25,7 @@
 ## البناء والتشغيل
 
 ```bash
-git clone https://github.com/tabaqat/geolibre-claude
+git clone https://github.com/tabaqatdev/geolibre-claude
 cd geolibre-claude
 cp .env.example .env          # ثم اضبط GEOLIBRE_CATALOG_URL
 ./start.sh                    # يبني كل الشيفرة، ويجهّز الشهادات، ويثبّت الإضافة

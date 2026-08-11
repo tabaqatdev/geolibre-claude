@@ -97,7 +97,7 @@ Claude Desktop / Claude Code
 ### Build & run
 
 ```bash
-git clone https://github.com/tabaqat/geolibre-claude
+git clone https://github.com/tabaqatdev/geolibre-claude
 cd geolibre-claude
 ./install.sh                 # first-time setup: creates .env, generates the token, issues the cert, builds
 ```

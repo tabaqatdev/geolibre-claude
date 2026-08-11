@@ -14,7 +14,7 @@ members = [
 version = "0.0.1"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/tabaqat/geolibre-claude"
+repository = "https://github.com/tabaqatdev/geolibre-claude"
 rust-version = "1.82"
 
 [profile.release]

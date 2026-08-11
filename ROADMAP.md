@@ -208,7 +208,7 @@ Each milestone is independently useful and shippable.
 
 - **License:** MIT (`LICENSE` at root).
 - **Install (dev):** `git clone && cp .env.example .env && ./start.sh` (macOS/Linux/WSL) or `./start.ps1` (Windows). Stop with `./stop.sh` / `./stop.ps1`.
-- **Install (users):** `/plugin marketplace add tabaqat/geolibre-claude` → `/plugin install`.
+- **Install (users):** `/plugin marketplace add tabaqatdev/geolibre-claude` → `/plugin install`.
 - **Config:** `cp .env.example .env`, set `GEOLIBRE_CATALOG_URL` (+ optional transport/TLS/embeddings).
 - **GeoLibre plugin:** `start.sh` builds `plugins/geolibre-claude-bridge` and installs it into `~/.geolibre/plugins/` for live map control (optional).
 

@@ -174,10 +174,10 @@ First tell Claude where the plugin's marketplace is. **Pick one source:**
 claude plugin marketplace add /Users/ahmedosman/Apps/geolibre-claude
 
 # b) from a GitHub repo (owner/repo) — for when it's published
-claude plugin marketplace add tabaqat/geolibre-claude
+claude plugin marketplace add tabaqatdev/geolibre-claude
 
 # c) from any git URL
-claude plugin marketplace add https://github.com/tabaqat/geolibre-claude
+claude plugin marketplace add https://github.com/tabaqatdev/geolibre-claude
 ```
 
 Then install it:
