@@ -28,7 +28,7 @@ comes bundled inside it — you don't add a connector separately.**
 | Piece | What it is | Gives you | Where |
 |---|---|---|---|
 | **Claude plugin** — `geolibre-claude` | a Claude **Code** plugin you install | **skills + agents + commands**, *and* it declares the MCP connector | Steps 5–6 |
-| **MCP connector** | the tool link the plugin declares in its `.mcp.json` — stdio **or** HTTPS+OAuth | the **tools** (`list_services`, `spatial_sql`, `add_layer`, …) | comes with the plugin (Steps 4–6) |
+| **MCP connector** | the tool link the plugin declares in its `.mcp.json` — stdio **or** HTTPS+OAuth | the **tools** (`describe_layer`, `query_data`, `spatial_sql`, `add_layer`, …) | comes with the plugin (Steps 4–6) |
 | **GeoLibre app plugin** — `geolibre-claude-bridge` | a TypeScript plugin you drop into **GeoLibre Desktop** | lets Claude drive a **live map** | Step 8 (optional) |
 
 **Why install a plugin instead of just adding a connector?** A bare connector gives Claude only the
@@ -239,12 +239,15 @@ cd plugins/geolibre-claude-bridge && npm install && npm run build && cd ../..
 mkdir -p ~/.geolibre/plugins
 ln -sfn "$(pwd)/plugins/geolibre-claude-bridge" ~/.geolibre/plugins/geolibre-claude-bridge
 
-# launch GeoLibre with the runtime env it needs, from a terminal
+# launch GeoLibre with the runtime env it needs — from a terminal, run the binary
+# DIRECTLY. Do NOT use `open -a "GeoLibre Desktop"`: a macOS GUI launch does not
+# inherit your shell's exported env, so the plugin would never see these vars.
 export GEOLIBRE_CLAUDE_PROJECT_URL="https://localhost:8443/project"   # server → plugin (apply)
 export GEOLIBRE_CLAUDE_CONTEXT_URL="https://localhost:8443/context"   # plugin → server (map context)
-export GEOLIBRE_CLAUDE_AUTH_TOKEN="$(cat ~/.config/geolibre-claude/token)"  # same bearer token as Step 3
-open -a "GeoLibre Desktop"
+export GEOLIBRE_CLAUDE_AUTH_TOKEN="$(grep -E '^GEOLIBRE_CLAUDE_AUTH_TOKEN=' .env | cut -d= -f2-)"  # same token as Step 3
+"/Applications/GeoLibre Desktop.app/Contents/MacOS/geolibre-desktop"
 ```
+(Keeping that terminal open means the app's logs — and the plugin's `console.*` — print there, your best debug channel.)
 
 The plugin **reads** the project document with `GET /project` (`PROJECT_URL`) to apply Claude's changes,
 and **writes** the map context with `PUT /context` (`CONTEXT_URL`) — the layers on the map with their
@@ -258,12 +261,15 @@ from `get_map_state`, never exposed to the model.
 > write `file://` in any case. Serving the exchange over the same localhost HTTPS listener is what the CSP
 > permits (verified against GeoLibre Desktop 2.5.0). See the contract in the `geolibre-project-file` skill.
 
-In GeoLibre: open the **Claude** toolbar menu → **Bridge panel**; it should say *“Bridge active”*.
-Prove the apply path by seeding a map and watching it load:
+In GeoLibre: open the **Claude** toolbar menu → **Bridge panel**; it should say
+*“Bridge active — watching https://localhost:8443/project”*.
+Prove the apply path by seeding a map and watching it load. Seed it into the **server's root**
+(`GEOLIBRE_CLAUDE_ROOT`, `~/maps` by default — *not* the repo folder), which is what `GET /project` serves:
 ```bash
-cp examples/claude.geolibre.json ./claude.geolibre.json
+cp examples/claude.geolibre.json ~/maps/claude.geolibre.json
 ```
-Then drive it from Claude with `/geolibre-claude:map`.
+The bridge polls every 2 s, so the layer should appear within a couple of seconds. Or drive it live from
+Claude with `/geolibre-claude:map`.
 
 > The transport is verified: the server's `GET /project` / `PUT /context` endpoints and the bearer gate
 > are tested, and GeoLibre 2.5.0's CSP is confirmed to allow the localhost HTTPS origin. What remains
