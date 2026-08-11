@@ -14,7 +14,7 @@ use anyhow::{Context, Result};
 use axum::{
     body::{Body, Bytes},
     extract::State,
-    http::{header, HeaderValue, Request, StatusCode},
+    http::{header, HeaderMap, HeaderValue, Method, Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Json, Response},
     routing::{get, put},
@@ -116,6 +116,12 @@ pub async fn serve(server: GeolibreServer, cfg: HttpConfig) -> Result<()> {
         }
     }
 
+    // CORS, outermost: the GeoLibre plugin fetches /project and /context from the
+    // webview's own origin, so these are cross-origin. The Authorization header makes
+    // them non-simple → the webview sends an OPTIONS preflight (which carries no auth).
+    // Answer the preflight and reflect the origin on every response.
+    app = app.layer(middleware::from_fn(cors));
+
     let addr: SocketAddr = base.parse().with_context(|| format!("invalid address {base}"))?;
     let tls = axum_server::tls_rustls::RustlsConfig::from_pem_file(&cfg.cert, &cfg.key)
         .await
@@ -141,6 +147,33 @@ fn protected_resource_metadata(base: &str, issuer: Option<&str>) -> serde_json::
         m["authorization_servers"] = serde_json::json!([iss]);
     }
     m
+}
+
+/// Add permissive CORS headers so the GeoLibre webview can call /project and /context
+/// cross-origin. Reflects the request Origin (falls back to `*`), and answers the
+/// preflight directly — the OPTIONS request carries no bearer token, so it must not be
+/// gated by auth (this layer sits outside `require_bearer`).
+async fn cors(req: Request<Body>, next: Next) -> Response {
+    let origin = req.headers().get(header::ORIGIN).cloned();
+    if req.method() == Method::OPTIONS {
+        let mut res = StatusCode::NO_CONTENT.into_response();
+        add_cors_headers(res.headers_mut(), origin.as_ref());
+        return res;
+    }
+    let mut res = next.run(req).await;
+    add_cors_headers(res.headers_mut(), origin.as_ref());
+    res
+}
+
+fn add_cors_headers(h: &mut HeaderMap, origin: Option<&HeaderValue>) {
+    let allow_origin = origin.cloned().unwrap_or_else(|| HeaderValue::from_static("*"));
+    h.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, allow_origin);
+    h.insert(header::ACCESS_CONTROL_ALLOW_METHODS, HeaderValue::from_static("GET, PUT, OPTIONS"));
+    h.insert(
+        header::ACCESS_CONTROL_ALLOW_HEADERS,
+        HeaderValue::from_static("authorization, content-type"),
+    );
+    h.insert(header::ACCESS_CONTROL_MAX_AGE, HeaderValue::from_static("600"));
 }
 
 async fn require_bearer(State(auth): State<AuthState>, req: Request<Body>, next: Next) -> Response {
@@ -178,9 +211,13 @@ async fn require_bearer(State(auth): State<AuthState>, req: Request<Body>, next:
 async fn serve_project(path: &Path) -> Response {
     match tokio::fs::read(path).await {
         Ok(bytes) => {
+            eprintln!("  [bridge] GET /project -> 200 ({} bytes)", bytes.len());
             ([(header::CONTENT_TYPE, "application/json")], bytes).into_response()
         }
-        Err(_) => (StatusCode::NOT_FOUND, "no project document yet\n").into_response(),
+        Err(_) => {
+            eprintln!("  [bridge] GET /project -> 404 (no project doc)");
+            (StatusCode::NOT_FOUND, "no project document yet\n").into_response()
+        }
     }
 }
 
