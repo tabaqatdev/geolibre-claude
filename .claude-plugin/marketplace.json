@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "geolibre-claude",
+  "description": "Claude as the AI brain for GeoLibre-style geospatial work — query ArcGIS & GeoParquet layers, spatial SQL, symbology, geoprocessing, and live map control, in 16 languages.",
+  "owner": {
+    "name": "Tabaqat",
+    "email": "info@tabaqat.net"
+  },
+  "plugins": [
+    {
+      "name": "geolibre-claude",
+      "description": "A geospatial MCP server + skills that let Claude query the map's layers (ArcGIS Feature Services and GeoParquet) with ESRI-compatible structured params and DuckDB Spatial SQL, design symbology, run vector geoprocessing, and drive a live GeoLibre map — multilingual (all 16 GeoLibre locales).",
+      "source": "./",
+      "category": "geospatial",
+      "author": {
+        "name": "Tabaqat",
+        "url": "https://tabaqat.net"
+      },
+      "homepage": "https://github.com/tabaqat/geolibre-claude"
+    }
+  ]
+}

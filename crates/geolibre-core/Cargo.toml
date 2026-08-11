@@ -1,0 +1,11 @@
+[package]
+name = "geolibre-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Shared tool-contract types and catalog index for GeoLibre-Claude."
+
+[dependencies]
+# Kept dependency-free at Phase 0 so `cargo build` is fast and offline-friendly.
+# Phase 1 adds: serde, serde_json (tool contracts) and the catalog index builder.

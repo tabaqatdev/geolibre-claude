@@ -1,0 +1,23 @@
+# GeoLibre-Claude — Cargo workspace root.
+# Rust powers the MCP server + geoprocessing (matching GeoLibre's own Rust use).
+# The in-app bridge is a TypeScript GeoLibre plugin (see plugins/), not Rust —
+# per GeoLibre's plugin conventions.
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/geolibre-claude", # the MCP server binary (rmcp)
+    "crates/geolibre-core",   # shared tool-contract types + catalog index
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/tabaqat/geolibre-claude"
+rust-version = "1.82"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true

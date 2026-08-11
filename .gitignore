@@ -1,0 +1,18 @@
+# Rust
+/target
+**/*.rs.bk
+
+# Node / plugin
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local runtime state (pids, logs) and secrets
+/.run/
+/certs/
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db

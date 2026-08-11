@@ -1,0 +1,15 @@
+{
+  "name": "geolibre-claude-bridge",
+  "version": "0.0.1",
+  "description": "GeoLibre plugin that bridges a running map to the geolibre-claude MCP server.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js && node -e \"require('fs').mkdirSync('dist',{recursive:true});require('fs').writeFileSync('dist/style.css','/* geolibre-claude-bridge */\\n')\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  }
+}

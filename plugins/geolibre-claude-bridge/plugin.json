@@ -1,0 +1,7 @@
+{
+  "id": "geolibre-claude-bridge",
+  "name": "GeoLibre-Claude Bridge",
+  "version": "0.0.1",
+  "entry": "dist/index.js",
+  "style": "dist/style.css"
+}

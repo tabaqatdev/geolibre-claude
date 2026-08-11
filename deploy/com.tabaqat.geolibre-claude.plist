@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  macOS launchd agent for the GeoLibre-Claude HTTPS server.
+  Auto-starts at login and RESTARTS automatically if it exits (KeepAlive).
+
+  Setup:
+    1. Edit the REPLACE_ME paths/values below.
+    2. cp deploy/com.tabaqat.geolibre-claude.plist ~/Library/LaunchAgents/
+    3. launchctl load  ~/Library/LaunchAgents/com.tabaqat.geolibre-claude.plist
+       launchctl start com.tabaqat.geolibre-claude
+    Stop / remove:
+       launchctl unload ~/Library/LaunchAgents/com.tabaqat.geolibre-claude.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tabaqat.geolibre-claude</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>REPLACE_ME/geolibre-claude/target/release/geolibre-claude</string>
+    <string>--transport</string>
+    <string>http</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>REPLACE_ME/geolibre-claude</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>GEOLIBRE_CATALOG_URL</key>       <string>https://your-host/arcgis/rest/services</string>
+    <key>GEOLIBRE_CLAUDE_TRANSPORT</key>  <string>http</string>
+    <key>GEOLIBRE_CLAUDE_HTTP_HOST</key>  <string>127.0.0.1</string>
+    <key>GEOLIBRE_CLAUDE_HTTP_PORT</key>  <string>8443</string>
+    <key>GEOLIBRE_CLAUDE_TLS_CERT</key>   <string>REPLACE_ME/geolibre-claude/certs/localhost.pem</string>
+    <key>GEOLIBRE_CLAUDE_TLS_KEY</key>    <string>REPLACE_ME/geolibre-claude/certs/localhost-key.pem</string>
+    <key>GEOLIBRE_CLAUDE_AUTH_TOKEN</key> <string>REPLACE_ME_WITH_openssl_rand_hex_32</string>
+    <key>GEOLIBRE_CLAUDE_OAUTH_ISSUER</key> <string></string>
+    <key>HOME</key>                       <string>REPLACE_ME_HOME</string>
+  </dict>
+
+  <!-- start at login, and restart automatically if it ever exits -->
+  <key>RunAtLoad</key>   <true/>
+  <key>KeepAlive</key>   <true/>
+
+  <key>StandardOutPath</key>   <string>REPLACE_ME/geolibre-claude/.run/service.out.log</string>
+  <key>StandardErrorPath</key> <string>REPLACE_ME/geolibre-claude/.run/service.err.log</string>
+</dict>
+</plist>

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "geolibre-claude": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/target/release/geolibre-claude",
+      "args": ["--transport", "stdio"],
+      "env": {
+        "GEOLIBRE_CATALOG_URL": "${GEOLIBRE_CATALOG_URL}"
+      }
+    }
+  }
+}

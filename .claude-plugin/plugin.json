@@ -1,0 +1,11 @@
+{
+  "name": "geolibre-claude",
+  "description": "Claude as the AI brain for GeoLibre-style geospatial work: query ArcGIS & GeoParquet layers, spatial SQL, symbology, geoprocessing, and live map control — in 16 languages.",
+  "version": "0.0.1",
+  "author": {
+    "name": "Tabaqat",
+    "url": "https://tabaqat.net"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/tabaqat/geolibre-claude"
+}

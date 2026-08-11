@@ -1,0 +1,34 @@
+[package]
+name = "geolibre-claude"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "MCP server exposing a geospatial catalog + live GeoLibre control to Claude."
+
+[[bin]]
+name = "geolibre-claude"
+path = "src/main.rs"
+
+[dependencies]
+geolibre-core = { path = "../geolibre-core" }
+rmcp = { version = "3", features = ["server", "macros", "transport-io", "transport-streamable-http-server"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "signal", "sync", "time"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+duckdb = { version = "1", features = ["bundled"] }
+tempfile = "3"
+futures = "0.3"
+getrandom = "0.2"
+# HTTPS + OAuth transport (Phase 5).
+axum = "0.8"
+axum-server = { version = "0.7", features = ["tls-rustls"] }
+rustls = "0.23"
+
+# ── Later-milestone dependencies (kept out until their slice lands): ──────────
+# wasmtime    = "26"                                                                         # Phase 3 — run geolibre-cli.wasm
+#                                                                                            #   (geolibre-rust is WASM/WASI-only, not a native crate)
+# rmcp extra  = features ["transport-streamable-http-server", "auth"]                        # Phase 5 (HTTPS+OAuth)
+# axum        = "0.8"; axum-server = { version = "0.7", features = ["tls-rustls"] }          # Phase 5 (mkcert TLS)

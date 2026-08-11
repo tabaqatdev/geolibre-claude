@@ -1,0 +1,315 @@
+<title>GeoLibre-Claude — Architecture & Roadmap</title>
+<style>
+  :root{
+    --ink:#10171c; --ink-2:#2b3a44; --paper:#fbfaf7; --panel:#ffffff;
+    --line:#d6d0c4; --muted:#5d6a72;
+    --data:#0f7f90;      /* teal — data / read path */
+    --app:#bd7a1e;       /* amber — app / control path */
+    --data-tint:#eaf4f5; --app-tint:#f6efe2;
+    --grid:rgba(16,23,28,.05);
+    --shadow:0 1px 2px rgba(16,23,28,.06), 0 8px 24px rgba(16,23,28,.06);
+    --mono:ui-monospace,"SF Mono",Menlo,"Cascadia Code",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --ink:#eef2f0; --ink-2:#c4d0d4; --paper:#0d1418; --panel:#141d22;
+      --line:#2a373d; --muted:#93a2a8;
+      --data:#38b6c8; --app:#e3a44a;
+      --data-tint:#122a2e; --app-tint:#2a2113;
+      --grid:rgba(255,255,255,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"]{
+    --ink:#10171c; --ink-2:#2b3a44; --paper:#fbfaf7; --panel:#ffffff;
+    --line:#d6d0c4; --muted:#5d6a72; --data:#0f7f90; --app:#bd7a1e;
+    --data-tint:#eaf4f5; --app-tint:#f6efe2; --grid:rgba(16,23,28,.05);
+  }
+  :root[data-theme="dark"]{
+    --ink:#eef2f0; --ink-2:#c4d0d4; --paper:#0d1418; --panel:#141d22;
+    --line:#2a373d; --muted:#93a2a8; --data:#38b6c8; --app:#e3a44a;
+    --data-tint:#122a2e; --app-tint:#2a2113; --grid:rgba(255,255,255,.045);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0}
+  .wrap{
+    max-width:960px; margin:0 auto; padding:56px 24px 96px;
+    background:var(--paper); color:var(--ink);
+    font-family:var(--sans); line-height:1.6;
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),
+                     linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:32px 32px;
+  }
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--data); margin:0 0 14px;
+  }
+  h1{
+    font-size:clamp(30px,5vw,46px); line-height:1.05; margin:0 0 12px;
+    letter-spacing:-.02em; font-weight:700; text-wrap:balance;
+  }
+  .lede{font-size:18px; color:var(--ink-2); max-width:62ch; margin:0 0 6px}
+  .meta{font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:18px}
+  .meta b{color:var(--ink)}
+
+  h2{
+    font-size:13px; font-family:var(--mono); letter-spacing:.16em;
+    text-transform:uppercase; color:var(--muted);
+    margin:56px 0 20px; padding-bottom:10px; border-bottom:1px solid var(--line);
+  }
+  .h2n{color:var(--data)}
+
+  figure{margin:0}
+  .board{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:18px; box-shadow:var(--shadow); overflow-x:auto;
+  }
+  svg{display:block; width:100%; height:auto; color:var(--ink)}
+  figcaption{font-size:14px; color:var(--muted); margin-top:14px; max-width:70ch}
+  figcaption b{color:var(--ink-2); font-weight:600}
+
+  .legend{display:flex; gap:22px; flex-wrap:wrap; margin:0 2px 16px;
+    font-size:13px; color:var(--ink-2); font-family:var(--mono)}
+  .legend span{display:inline-flex; align-items:center; gap:8px}
+  .sw{width:22px; height:0; border-top:3px solid; border-radius:2px}
+  .sw.data{border-color:var(--data)} .sw.app{border-color:var(--app)}
+  .sw.dash{border-top-style:dashed; border-color:var(--muted)}
+
+  /* division-of-labor cards */
+  .cols{display:grid; grid-template-columns:repeat(2,1fr); gap:14px}
+  @media (max-width:640px){.cols{grid-template-columns:1fr}}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:18px 18px 16px; box-shadow:var(--shadow)}
+  .card h3{margin:0 0 4px; font-size:15px}
+  .card .tag{font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted)}
+  .card.thin{border-top:3px solid var(--data)}
+  .card.thick{border-top:3px solid var(--app)}
+  .card ul{margin:12px 0 0; padding:0; list-style:none; font-size:13.5px}
+  .card li{padding:5px 0; border-top:1px dashed var(--line); color:var(--ink-2)}
+  .card li:first-child{border-top:0}
+  .card code{font-family:var(--mono); font-size:12.5px; color:var(--ink)}
+
+  /* roadmap timeline */
+  .phases{display:flex; flex-direction:column; gap:0}
+  .phase{display:grid; grid-template-columns:132px 1fr; gap:20px; padding:16px 0;
+    border-top:1px solid var(--line)}
+  .phase:first-child{border-top:0}
+  .phase .rail{display:flex; flex-direction:column; gap:6px}
+  .ver{font-family:var(--mono); font-weight:700; font-size:15px; color:var(--data)}
+  .dur{font-size:12px; color:var(--muted)}
+  .phase h3{margin:0 0 6px; font-size:16px}
+  .phase p{margin:0 0 8px; color:var(--ink-2); font-size:14.5px}
+  .accept{font-size:13px; color:var(--muted); font-family:var(--mono)}
+  .accept b{color:var(--app); font-weight:600}
+  .ship{font-family:var(--mono); font-size:11px; padding:2px 8px; border-radius:20px;
+    border:1px solid var(--app); color:var(--app); align-self:flex-start; letter-spacing:.05em}
+
+  .tree{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:20px 22px; box-shadow:var(--shadow); overflow-x:auto;
+    font-family:var(--mono); font-size:13px; line-height:1.75; color:var(--ink-2)}
+  .tree .d{color:var(--data)} .tree .c{color:var(--muted)} .tree b{color:var(--ink)}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Tabaqat · MIT · planning</p>
+  <h1>GeoLibre-Claude</h1>
+  <p class="lede">A public Claude Code plugin that flips the topology: <b>Claude becomes the host and reasoning engine</b>, while GeoLibre's capabilities and your data catalog are exposed as MCP tools plus multilingual skills.</p>
+  <p class="lede" style="font-size:16px">Guiding principle — <b>thin tools, thick skills</b>: the server holds only dumb, safe primitives; all intelligence lives in skills. Built in <b>Rust</b> to match GeoLibre — reusing its own crates rather than reimplementing them.</p>
+  <p class="meta">Stack <b>Rust</b> (rmcp · duckdb-rs) + <b>TS plugin</b> · Transport <b>stdio</b> | <b>HTTPS :8443</b> (mkcert + OAuth) · <b>16 locales</b> · Owner <b>Tabaqat</b> · Updated <b>2026-08-10</b></p>
+
+  <h2><span class="h2n">01</span>&nbsp;&nbsp;Runtime topology</h2>
+
+  <div class="legend">
+    <span><i class="sw data"></i> data / read path — always available</span>
+    <span><i class="sw app"></i> app / control path — needs running GeoLibre</span>
+    <span><i class="sw dash"></i> fallback channel</span>
+  </div>
+
+  <figure>
+    <div class="board">
+      <svg viewBox="0 0 900 640" role="img" aria-label="GeoLibre-Claude runtime topology: Claude host connects over MCP stdio to a thin MCP server that splits into data tools reaching an ArcGIS/DuckDB catalog and app tools reaching a GeoLibre plugin over a localhost WebSocket.">
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="currentColor"/>
+          </marker>
+          <marker id="at" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="var(--data)"/>
+          </marker>
+          <marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0L10 5L0 10z" fill="var(--app)"/>
+          </marker>
+        </defs>
+
+        <!-- CLAUDE HOST -->
+        <rect x="210" y="18" width="480" height="86" rx="12" fill="var(--panel)" stroke="currentColor" stroke-width="1.5"/>
+        <text x="450" y="48" text-anchor="middle" font-family="var(--sans)" font-size="17" font-weight="700" fill="currentColor">Claude Desktop / Claude Code</text>
+        <text x="450" y="70" text-anchor="middle" font-family="var(--mono)" font-size="12" fill="var(--muted)">host · reasoning engine</text>
+        <text x="450" y="90" text-anchor="middle" font-family="var(--mono)" font-size="11.5" fill="var(--muted)">skills · agents · commands live here</text>
+
+        <!-- stdio arrow -->
+        <line x1="450" y1="104" x2="450" y2="150" stroke="currentColor" stroke-width="1.5" marker-end="url(#a)"/>
+        <text x="462" y="130" font-family="var(--mono)" font-size="12" fill="var(--ink)">MCP · stdio (default, zero-config)</text>
+        <text x="462" y="146" font-family="var(--mono)" font-size="10.5" fill="var(--muted)">or HTTPS :8443 — mkcert + OAuth (durable)</text>
+
+        <!-- MCP SERVER -->
+        <rect x="120" y="152" width="660" height="150" rx="12" fill="var(--panel)" stroke="currentColor" stroke-width="1.5"/>
+        <text x="140" y="178" font-family="var(--mono)" font-size="12.5" font-weight="700" fill="currentColor">MCP SERVER — thin primitives · one Rust binary · rmcp</text>
+
+        <!-- DATA tools -->
+        <rect x="140" y="192" width="300" height="94" rx="9" fill="var(--data-tint)" stroke="var(--data)" stroke-width="1.5"/>
+        <text x="156" y="214" font-family="var(--mono)" font-size="12.5" font-weight="700" fill="var(--data)">DATA tools</text>
+        <text x="156" y="236" font-family="var(--mono)" font-size="11" fill="var(--ink-2)">list_services · describe_layer</text>
+        <text x="156" y="253" font-family="var(--mono)" font-size="11" fill="var(--ink-2)">query_features · statistics</text>
+        <text x="156" y="270" font-family="var(--mono)" font-size="11" fill="var(--ink-2)">spatial_sql · search_catalog</text>
+
+        <!-- APP tools -->
+        <rect x="460" y="192" width="300" height="94" rx="9" fill="var(--app-tint)" stroke="var(--app)" stroke-width="1.5"/>
+        <text x="476" y="214" font-family="var(--mono)" font-size="12.5" font-weight="700" fill="var(--app)">APP tools</text>
+        <text x="476" y="236" font-family="var(--mono)" font-size="11" fill="var(--ink-2)">add_layer · remove_layer</text>
+        <text x="476" y="253" font-family="var(--mono)" font-size="11" fill="var(--ink-2)">set_style · zoom_to</text>
+        <text x="476" y="270" font-family="var(--mono)" font-size="11" fill="var(--ink-2)">run_geoprocessing · get_map_state</text>
+
+        <!-- diverge arrows -->
+        <line x1="290" y1="286" x2="290" y2="356" stroke="var(--data)" stroke-width="2" marker-end="url(#at)"/>
+        <text x="300" y="326" font-family="var(--mono)" font-size="11" fill="var(--data)">reads · offline of app</text>
+
+        <line x1="610" y1="286" x2="610" y2="356" stroke="var(--app)" stroke-width="2" marker-end="url(#am)"/>
+        <text x="620" y="322" font-family="var(--mono)" font-size="11" fill="var(--app)">localhost WS</text>
+        <text x="620" y="338" font-family="var(--mono)" font-size="10.5" fill="var(--muted)">controls live map</text>
+
+        <!-- DATA sources -->
+        <rect x="120" y="358" width="340" height="150" rx="11" fill="var(--panel)" stroke="var(--data)" stroke-width="1.5"/>
+        <text x="140" y="384" font-family="var(--mono)" font-size="12" font-weight="700" fill="var(--data)">CATALOG · DATA · GEO ENGINE</text>
+        <text x="140" y="410" font-family="var(--sans)" font-size="13" fill="var(--ink-2)">▸ ArcGIS-REST catalog</text>
+        <text x="140" y="434" font-family="var(--sans)" font-size="13" fill="var(--ink-2)">▸ DuckDB via duckdb-rs — SELECT-only</text>
+        <text x="140" y="458" font-family="var(--sans)" font-size="13" fill="var(--ink-2)">▸ geolibre-rust — whitebox + geo tools</text>
+        <text x="140" y="482" font-family="var(--sans)" font-size="13" fill="var(--ink-2)">▸ BM25 + alias index · embeddings opt.</text>
+
+        <!-- APP chain -->
+        <rect x="500" y="358" width="280" height="40" rx="9" fill="var(--app-tint)" stroke="var(--app)" stroke-width="1.5"/>
+        <text x="640" y="379" text-anchor="middle" font-family="var(--mono)" font-size="11.5" font-weight="700" fill="var(--app)">GeoLibre plugin · TS/ESM</text>
+        <text x="640" y="393" text-anchor="middle" font-family="var(--mono)" font-size="10" fill="var(--muted)">plugin.json · from template</text>
+        <line x1="640" y1="398" x2="640" y2="418" stroke="var(--app)" stroke-width="2" marker-end="url(#am)"/>
+
+        <rect x="500" y="420" width="280" height="40" rx="9" fill="var(--panel)" stroke="var(--app)" stroke-width="1.5"/>
+        <text x="640" y="440" text-anchor="middle" font-family="var(--mono)" font-size="11.5" fill="var(--ink)">GeoLibreAppAPI</text>
+        <text x="640" y="453" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--muted)">getMap · addLayer · panels</text>
+        <line x1="640" y1="460" x2="640" y2="480" stroke="var(--app)" stroke-width="2" marker-end="url(#am)"/>
+
+        <rect x="500" y="482" width="280" height="46" rx="9" fill="var(--panel)" stroke="var(--app)" stroke-width="1.5"/>
+        <text x="640" y="503" text-anchor="middle" font-family="var(--mono)" font-size="11.5" fill="var(--ink)">MapLibre map · DuckDB-WASM</text>
+        <text x="640" y="519" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--muted)">layer manager</text>
+
+        <!-- fallback dashed -->
+        <path d="M760 260 C 840 300, 840 400, 786 424" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#a)"/>
+        <text x="812" y="352" text-anchor="middle" font-family="var(--mono)" font-size="10" fill="var(--muted)" transform="rotate(90 812 352)">fallback · .geolibre.json</text>
+
+        <!-- footer note -->
+        <text x="120" y="558" font-family="var(--mono)" font-size="11" fill="var(--muted)">Data tools answer questions with GeoLibre closed. App tools require the plugin + a running instance.</text>
+        <text x="120" y="576" font-family="var(--mono)" font-size="11" fill="var(--muted)">If the live channel can't hold under CSP, Claude edits .geolibre.json (getProjectState) as the fallback.</text>
+      </svg>
+    </div>
+    <figcaption>The reasoning happens in Claude; the server is a passive relay. <b>Three tool groups split at the Rust server:</b> DATA and GEO reach the catalog, DuckDB, and the reused geolibre-rust crates directly (working with GeoLibre closed), while APP drives the live map through a standard GeoLibre TypeScript plugin — with a <code>.geolibre.json</code> project-file fallback when the live channel can't hold.</figcaption>
+  </figure>
+
+  <h2><span class="h2n">02</span>&nbsp;&nbsp;Division of labor</h2>
+  <div class="cols">
+    <div class="card thin">
+      <span class="tag">deterministic · rust</span>
+      <h3>MCP tools — thin</h3>
+      <ul>
+        <li><code>rmcp</code> · single Rust binary, no reasoning</li>
+        <li><code>spatial_sql</code> SELECT-only via <code>duckdb-rs</code></li>
+        <li>Geo tools reuse <code>geolibre-rust</code></li>
+        <li>App-bridge: add_layer · set_style · zoom_to</li>
+        <li>Small, auditable, portable</li>
+      </ul>
+    </div>
+    <div class="card thick">
+      <span class="tag">intelligence</span>
+      <h3>Skills — thick</h3>
+      <ul>
+        <li>Choose layers · write spatial SQL</li>
+        <li>Design ramps · chain geoprocessing</li>
+        <li>16 locales · Arabic normalization + RTL</li>
+        <li>Earth observation (STAC / Sentinel)</li>
+        <li>Agents orchestrate; commands enter</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2><span class="h2n">03</span>&nbsp;&nbsp;Milestones</h2>
+  <div class="phases">
+    <div class="phase">
+      <div class="rail"><span class="ver">Phase 0</span><span class="dur">2–3 days</span></div>
+      <div>
+        <h3>Foundations &amp; verification</h3>
+        <p>Confirm the GeoLibre plugin API (socket? map + DuckDB-WASM? tool registration?), size the catalog, scaffold the repo skeleton.</p>
+        <p class="accept"><b>Accept:</b> <code>claude --plugin-dir .</code> loads the stub; namespaced skills appear in /help.</p>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="rail"><span class="ver">Phase 1</span><span class="dur">1–2 weeks</span><span class="ship">v0.1 · first usable</span></div>
+      <div>
+        <h3>Data MCP + core skills</h3>
+        <p>Data tools over stdio; skills geolibre / catalog / spatial-sql; agents catalog-scout &amp; spatial-sql-writer.</p>
+        <p class="accept"><b>Accept:</b> ask a data question in English → correct answer + table from the live catalog.</p>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="rail"><span class="ver">Phase 2</span><span class="dur">1 week</span><span class="ship">v0.2</span></div>
+      <div>
+        <h3>Multilingual + semantic catalog</h3>
+        <p>catalog index (BM25 + alias, optional embeddings); search_catalog + normalize_query; geolibre-i18n skill &amp; language-liaison agent.</p>
+        <p class="accept"><b>Accept:</b> the same question in Arabic (spot-checked in ≥2 more locales) resolves to the right layer and replies in-language (RTL for Arabic).</p>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="rail"><span class="ver">Phase 3</span><span class="dur">1 week</span><span class="ship">v0.3</span></div>
+      <div>
+        <h3>Visualization skills</h3>
+        <p>Symbology, geoprocessing, earth-observation skills; symbology-designer agent.</p>
+        <p class="accept"><b>Accept:</b> "buffer schools by 500 m, color by capacity" → correct SQL + symbology spec.</p>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="rail"><span class="ver">Phase 4</span><span class="dur">1–2 weeks</span><span class="ship">v0.4 · full parity</span></div>
+      <div>
+        <h3>Live app control</h3>
+        <p>geolibre-claude-bridge (GeoLibre TS plugin) + app-bridge tools; map-control &amp; project-file skills; /map and /analyze commands.</p>
+        <p class="accept"><b>Accept:</b> Claude adds a styled layer to a running map and zooms to it.</p>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="rail"><span class="ver">Phase 5</span><span class="dur">ongoing</span><span class="ship">v1.0</span></div>
+      <div>
+        <h3>Release hardening</h3>
+        <p>Localized docs + examples; plugin validate; marketplace listing; HTTPS+OAuth deployment guide (mkcert + IdP).</p>
+        <p class="accept"><b>Accept:</b> a fresh clone reaches working v0.1 in under 10 min from the README.</p>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="h2n">04</span>&nbsp;&nbsp;Repo layout</h2>
+  <div class="tree">
+<span class="d">geolibre-claude/</span>                     <span class="c">← repo root = plugin root (MIT)</span>
+├── .claude-plugin/      <span class="c">plugin.json  (+ marketplace.json in Phase 5)</span>
+├── .mcp.json            <span class="c">launches …/target/release/geolibre-claude</span>
+├── <b>skills/</b>              <span class="c">geolibre · catalog · spatial-sql · symbology ·</span>
+│                       <span class="c">geoprocessing · map-control · project-file · earth-observation · i18n</span>
+├── <b>agents/</b>             <span class="c">geospatial-analyst · catalog-scout · spatial-sql-writer ·</span>
+│                       <span class="c">symbology-designer · language-liaison</span>
+├── <b>commands/</b>           <span class="c">map · ask · analyze · setup</span>
+├── <b>crates/</b>             <span class="c">geolibre-claude (rmcp) · geolibre-core</span>
+├── <b>plugins/</b>            <span class="c">geolibre-claude-bridge  (GeoLibre plugin · TypeScript/ESM)</span>
+├── Cargo.toml           <span class="c">[workspace] members = crates/*</span>
+├── start.sh · stop.sh          <span class="c">build + run (macOS/Linux/WSL)</span>
+├── start.ps1 · stop.ps1        <span class="c">build + run (Windows)</span>
+└── .env.example · docs/(localized) · LICENSE · README.md
+  </div>
+
+</div>
